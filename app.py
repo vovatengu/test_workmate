@@ -10,19 +10,19 @@ def main():
     parser = argparse.ArgumentParser(description="Утилита для формирования отчетов по метрикам видео")
     parser.add_argument('--files', nargs='+', required=True, help='Список CSV файлов для анализа')
     parser.add_argument('--report', required=True, help='Название типа отчета (например: clickbait)')
-    
+
     args = parser.parse_args()
 
     try:
         # 1. Загрузка данных
         data = load_csv_files(args.files)
-        
+
         # 2. Получение объекта отчета
         report_processor = ReportRegistry.get_report(args.report)
-        
+
         # 3. Генерация данных отчета
         report_data = report_processor.generate(data)
-        
+
         # 4. Вывод в консоль
         print(tabulate(report_data, headers="keys", tablefmt="grid", floatfmt=".1f"))
 
