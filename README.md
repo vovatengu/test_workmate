@@ -4,33 +4,34 @@ CLI-приложение читает CSV с метриками YouTube-виде
 
 ## Требования
 
-- Python **3.10+** (в коде используются современные аннотации типов)
+- Python **3.10+**
+- [uv](https://docs.astral.sh/uv/) для управления зависимостями
 
 ## Установка
 
-1. Клонируйте репозиторий и перейдите в каталог проекта:
+1. Установите `uv` (если ещё не установлен):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. Клонируйте репозиторий и перейдите в каталог проекта:
 
 ```bash
 cd test_workmate
 ```
 
-2. Создайте виртуальное окружение (рекомендуется):
+3. Создайте виртуальное окружение и установите зависимости:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate   # Linux / macOS
-# .venv\Scripts\activate      # Windows
+uv sync
 ```
 
-3. Установите зависимости:
-
-```bash
-pip install -r requirements.txt
-```
+`uv sync` автоматически создаст `.venv`, поставит runtime-зависимости из `pyproject.toml` и dev-зависимости (`pytest`, `pytest-cov`, `ruff`).
 
 ## Как пользоваться
 
-Запускайте скрипт из **корня репозитория** (там же, где лежит `app.py`).
+Запускайте через `uv run` из корня репозитория.
 
 ### Аргументы
 
@@ -38,39 +39,59 @@ pip install -r requirements.txt
 |----------|----------|
 | `--files` | Один или несколько путей к CSV-файлам (обязательно) |
 | `--report` | Тип отчёта. Сейчас доступен: `clickbait` (обязательно) |
+| `--log-level` | Уровень логирования: `DEBUG`, `INFO`, `WARNING` (по умолчанию), `ERROR` |
 
-Отчёт **только печатается в терминал** (таблица), в файл по умолчанию ничего не сохраняется.
+Отчёт **только печатается в терминал** (таблица). Технические сообщения (warnings, errors) идут через `logging` в stderr.
 
 ### Пример
 
 Один файл:
 
 ```bash
-python app.py --files data/stats1.csv --report clickbait
+uv run python app.py --files data/stats1.csv --report clickbait
 ```
 
 Несколько файлов (данные объединяются):
 
 ```bash
-python app.py --files data/stats1.csv data/stats2.csv --report clickbait
+uv run python app.py --files data/stats1.csv data/stats2.csv --report clickbait
 ```
 
-Если CSV лежат в другом месте, укажите полный или относительный путь:
+С подробным логированием:
 
 ```bash
-python app.py --files /path/to/stats.csv --report clickbait
+uv run python app.py --files data/stats1.csv --report clickbait --log-level DEBUG
 ```
 
 ### Ошибки
 
-- Указан несуществующий файл — программа завершится с сообщением в stderr.
+- Указан несуществующий файл — программа завершится с записью в лог и кодом возврата `1`.
 - Неизвестное значение `--report` — сообщение о неизвестном типе отчёта.
 
 ## Тесты
 
 ```bash
-pytest tests/ --cov=src
+uv run pytest --cov=src
 ```
+
+## Линтер и форматтер
+
+В проекте настроен [ruff](https://docs.astral.sh/ruff/) (линтер + форматтер).
+
+```bash
+uv run ruff check .       # линт
+uv run ruff format .      # автоформат
+uv run ruff format --check .  # проверить формат без изменений
+```
+
+Конфигурация — в `pyproject.toml` (секции `[tool.ruff]` и `[tool.ruff.lint]`).
+
+## Структура
+
+- `app.py` — точка входа CLI.
+- `src/loader.py` — загрузка CSV в `list[VideoRecord]` (TypedDict). Невалидные строки логируются и пропускаются.
+- `src/reports.py` — отчёты: `Report` (Protocol), `ClickbaitReport`, `ReportRegistry`. DTO результата — `ClickbaitRow` (`@dataclass(frozen=True, slots=True)`).
+- `tests/` — тесты, использующие `@pytest.fixture` и `@pytest.mark.parametrize`.
 
 ---
 
